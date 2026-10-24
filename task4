@@ -1,0 +1,74 @@
+import * as THREE from 'three';
+
+let hitSource = null;
+let hitSourceRequested = false;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.xr.enabled = true;
+document.body.appendChild(renderer.domElement);
+
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 2.5);
+scene.add(hemiLight);
+
+// Маркер плоскости (ретикл)
+const markerGeom = new THREE.RingGeometry(0.08, 0.11, 32).rotateX(-Math.PI / 2);
+const markerMat = new THREE.MeshBasicMaterial({ color: 0x00cec9, side: THREE.DoubleSide });
+const marker = new THREE.Mesh(markerGeom, markerMat);
+marker.matrixAutoUpdate = false;
+marker.visible = false;
+scene.add(marker);
+
+// Запуск сессии WebXR
+const btnLaunch = document.getElementById('launch');
+btnLaunch.addEventListener('click', async () => {
+  if (!navigator.xr || !(await navigator.xr.isSessionSupported('immersive-ar'))) {
+    alert('WebXR AR не поддерживается браузером');
+    return;
+  }
+  const session = await navigator.xr.requestSession('immersive-ar', {
+    requiredFeatures: ['hit-test', 'local-floor']
+  });
+  renderer.xr.setReferenceSpaceType('local-floor');
+  await renderer.xr.setSession(session);
+
+  session.addEventListener('select', () => {
+    if (!marker.visible) return;
+    // Фиксация 3D-объекта в точке пересечения
+    const geom = new THREE.BoxGeometry(0.15, 0.15, 0.15);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x6c5ce7, metalness: 0.5, roughness: 0.2 });
+    const box = new THREE.Mesh(geom, mat);
+    box.position.setFromMatrixPosition(marker.matrix);
+    box.quaternion.setFromRotationMatrix(marker.matrix);
+    scene.add(box);
+  });
+});
+
+// Цикл обновления кадров и опрос луча Hit-Test
+renderer.setAnimationLoop((timestamp, frame) => {
+  if (frame) {
+    const session = renderer.xr.getSession();
+    if (!hitSourceRequested) {
+      session.requestReferenceSpace('viewer').then((viewerSpace) => {
+        session.requestHitTestSource({ space: viewerSpace }).then((src) => { hitSource = src; });
+      });
+      hitSourceRequested = true;
+    }
+
+    if (hitSource) {
+      const hitResults = frame.getHitTestResults(hitSource);
+      if (hitResults.length > 0) {
+        const hitPose = hitResults[0].getPose(renderer.xr.getReferenceSpace());
+        marker.matrix.fromArray(hitPose.transform.matrix);
+        marker.visible = true;
+      } else {
+        marker.visible = false;
+      }
+    }
+  }
+  renderer.render(scene, camera);
+});
