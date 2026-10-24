@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Задание 3: MindAR Face Tracking</title>
+  <style>
+    body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
+    #ui-container {
+      position: absolute; top: 20px; left: 50%;
+      transform: translateX(-50%); z-index: 1000;
+      display: flex; gap: 8px; background: rgba(0, 0, 0, 0.7);
+      padding: 8px 16px; border-radius: 25px;
+    }
+    .effect-btn {
+      padding: 8px 14px; font-size: 13px; font-weight: 600;
+      border: none; border-radius: 16px; background: rgba(255, 255, 255, 0.2);
+      color: #fff; cursor: pointer;
+    }
+    .effect-btn.active { background: #0984e3; }
+  </style>
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
+</head>
+<body>
+  <div id="ui-container">
+    <button class="effect-btn active" data-effect="glasses">Очки</button>
+    <button class="effect-btn" data-effect="mask">Маска</button>
+    <button class="effect-btn" data-effect="horns">Корона</button>
+    <button class="effect-btn" data-effect="none">Выкл</button>
+  </div>
+
+  <a-scene
+    mindar-face="filterMinCF: 0.0001; filterBeta: 1"
+    embedded
+    color-space="sRGB"
+    renderer="colorManagement: true, physicallyCorrectLights"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false">
+    
+    <a-camera position="0 0 0" look-controls-enabled="false"></a-camera>
+    <a-light type="ambient" intensity="0.9"></a-light>
+    <a-light type="directional" intensity="1.2" position="0 1 1"></a-light>
+
+    <!-- Очки: точка 168 (переносица) -->
+    <a-entity mindar-face-target="anchorIndex: 168">
+      <a-entity id="glassesEntity" visible="true">
+        <a-cylinder position="-0.32 0 0.1" rotation="90 0 0" radius="0.22" height="0.04" color="#111" material="roughness: 0.1; opacity: 0.9; transparent: true"></a-cylinder>
+        <a-cylinder position="0.32 0 0.1" rotation="90 0 0" radius="0.22" height="0.04" color="#111" material="roughness: 0.1; opacity: 0.9; transparent: true"></a-cylinder>
+        <a-box position="0 0.04 0.1" width="0.22" height="0.03" depth="0.03" color="#f1c40f"></a-box>
+      </a-entity>
+    </a-entity>
+
+    <!-- Маска: точка 1 (нос) -->
+    <a-entity mindar-face-target="anchorIndex: 1">
+      <a-entity id="maskEntity" visible="false">
+        <a-cone position="0 -0.15 0.15" rotation="180 0 0" radius-bottom="0.45" radius-top="0.1" height="0.6" color="#00cec9" material="wireframe: true"></a-cone>
+      </a-entity>
+    </a-entity>
+
+    <!-- Корона: точка 10 (верх лба) -->
+    <a-entity mindar-face-target="anchorIndex: 10">
+      <a-entity id="hornsEntity" visible="false" position="0 0.25 0">
+        <a-cone position="0 0.3 0" radius-bottom="0.08" radius-top="0.01" height="0.4" color="#fdcb6e"></a-cone>
+        <a-torus position="0 0.05 0" rotation="90 0 0" radius="0.4" radius-tubular="0.03" color="#e17055"></a-torus>
+      </a-entity>
+    </a-entity>
+  </a-scene>
+
+  <script>
+    const buttons = document.querySelectorAll('.effect-btn');
+    const glasses = document.getElementById('glassesEntity');
+    const mask = document.getElementById('maskEntity');
+    const horns = document.getElementById('hornsEntity');
+
+    buttons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        buttons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const effect = btn.getAttribute('data-effect');
+        glasses.setAttribute('visible', effect === 'glasses');
+        mask.setAttribute('visible', effect === 'mask');
+        horns.setAttribute('visible', effect === 'horns');
+      });
+    });
+  </script>
+</body>
+</html>
